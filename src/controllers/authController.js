@@ -2,8 +2,8 @@ const Cliente = require('../models/Cliente');
 const Negocio = require('../models/Negocio');
 const Repartidor = require('../models/Repartidor');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken'); // <-- Importamos jsonwebtoken
 
-// Función de ayuda para buscar un usuario en todas las colecciones
 const findUserByEmail = async (email) => {
   let user = await Cliente.findOne({ email });
   if (user) return { user, rol: 'cliente' };
@@ -25,7 +25,6 @@ const registerUser = async (req, res) => {
 
   try {
     let user;
-
     if (rol === 'cliente') {
       user = await Cliente.create({ nombre, email, password, direccion, telefono });
     } else if (rol === 'negocio') {
@@ -36,8 +35,12 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'Rol de usuario inválido' });
     }
     
+    // Generar token JWT
+    const token = jwt.sign({ id: user._id, rol: rol }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
     res.status(201).json({ 
       message: 'Usuario registrado exitosamente',
+      token, // <-- Enviamos el token
       user: { id: user._id, rol: rol }
     });
     
@@ -64,9 +67,13 @@ const loginUser = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: 'Credenciales inválidas' });
     }
+    
+    // Generar token JWT
+    const token = jwt.sign({ id: foundUser.user._id, rol: foundUser.rol }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     res.status(200).json({
       message: 'Inicio de sesión exitoso',
+      token, // <-- Enviamos el token
       user: { id: foundUser.user._id, rol: foundUser.rol }
     });
 
